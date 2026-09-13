@@ -1,4 +1,5 @@
 import { createServer } from 'node:http'
+import { pool } from './database.js'
 
 interface RegisterData{
     fullName: string
@@ -23,7 +24,7 @@ const server = createServer((request, response) =>{
             body += chunk
         })
 
-        request.on('end', () =>{
+        request.on('end', async () =>{
 
             let data: RegisterData
 
@@ -59,16 +60,50 @@ const server = createServer((request, response) =>{
                 return
             }
 
-            console.log(data)
+            try{
+                await pool.query(
+                `
+                    INSERT INTO users
+                    (full_name, username, email, password_hash, role)
+                    VALUES($1, $2, $3, $4, $5)
+                `,
+                [
+                    data.fullName,
+                    data.username,
+                    data.email,
+                    'TESTE',
+                    'aluno'
+                ]
+            )
+        } catch (error) {
+            console.error('Erro ao cadastrar aluno: ', error)
+            response.statusCode = 500
+            response.end('Erro ao cadastrar aluno!')
+            return
+        }
 
-            response.end('Dados recebidos!')
-        })
-
-        return
-   } 
-   response.statusCode = 404
-   response.end('Rota não encontrada')
+        console.log(data)
+        response.end('Aluno cadastrado!')
+    
+    
+    })
+    
+    return
+    
+    }
+    
+    response.statusCode = 404
+    response.end('Rota não encontrada')
 })
+
+
+pool.query('SELECT 1')
+    .then(() => {
+        console.log('Banco de dados conectado!')
+    })
+    .catch((error) =>{
+        console.error('Erro ao conectar ao banco:', error)
+    })
 
 server.listen(3000, () => {
     console.log('Servidor rodando em http://localhost:3000')
